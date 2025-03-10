@@ -4,7 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "start http://localhost:5173 & vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
@@ -21,7 +21,8 @@
 		"db:studio": "drizzle-kit studio",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build",
-		"browser": "npx @agentdeskai/browser-tools-server"
+		"browser": "npx @agentdeskai/browser-tools-server",
+		"update": "git -c http.sslVerify=false -c http.proxy= -c https.proxy= pull origin main"
 	},
 	"devDependencies": {
 		"@chromatic-com/storybook": "^3.2.4",
