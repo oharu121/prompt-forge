@@ -1,0 +1,13 @@
+{
+  "id": "meeting-summary",
+  "name": "Meeting Summary",
+  "description": "Generate markdown summaries from meeting records",
+  "prompt": "Please create a concise summary of the following meeting notes in markdown format, highlighting key decisions, action items, and main discussion points:\n\n{input}",
+  "parameters": {
+    "input": {
+      "type": "string",
+      "description": "The meeting notes to summarize",
+      "required": true
+    }
+  }
+} 

@@ -1,0 +1,13 @@
+{
+  "id": "code-review",
+  "name": "Code Review",
+  "description": "Generate a detailed code review with suggestions for improvement",
+  "prompt": "Please review the following code and provide a detailed analysis including:\n1. Code quality assessment\n2. Potential bugs or issues\n3. Performance considerations\n4. Best practices suggestions\n5. Security concerns\n\nCode to review:\n{code}",
+  "parameters": {
+    "code": {
+      "type": "string",
+      "description": "The code snippet to review",
+      "required": true
+    }
+  }
+} 
