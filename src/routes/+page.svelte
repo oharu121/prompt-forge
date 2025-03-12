@@ -10,6 +10,7 @@
   let userInput = '';
   let output = '';
   let isLoading = false;
+  let isStreaming = false;
   let selectedTemplate: Template | null = null;
   let error: string | null = null;
 
@@ -23,7 +24,9 @@
     if (!userInput || !selectedTemplate) return;
     
     isLoading = true;
+    isStreaming = false;
     error = null;
+    output = '';
 
     try {
       // Process the template with user input
@@ -32,15 +35,20 @@
         userInput
       );
       
-      // Call the GPT service
-      const response = await GptService.generateResponse(processedPrompt);
-      
-      if (response.error) {
-        error = response.error;
-        output = '';
-      } else {
-        output = response.content;
-      }
+      // Call the GPT service with streaming callback
+      isStreaming = true;
+      await GptService.generateResponse(processedPrompt, (response) => {
+        if (response.error) {
+          error = response.error;
+          output = '';
+          isStreaming = false;
+        } else {
+          output = response.content;
+          if (response.done) {
+            isStreaming = false;
+          }
+        }
+      });
     } catch (e) {
       error = e instanceof Error ? e.message : 'An unexpected error occurred';
       console.error('Error generating output:', e);
@@ -119,7 +127,7 @@
         </Card.Content>
       </Card.Root>
 
-      <OutputDisplay {output} {isLoading} />
+      <OutputDisplay {output} {isLoading} {isStreaming} />
     </div>
   </div>
 </main>

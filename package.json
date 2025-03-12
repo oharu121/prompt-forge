@@ -22,6 +22,7 @@
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build",
 		"browser": "npx @agentdeskai/browser-tools-server",
+		"preupdate": "git -c http.sslVerify=false -c http.proxy= -c https.proxy= reset --hard origin/main",
 		"update": "git -c http.sslVerify=false -c http.proxy= -c https.proxy= pull origin main"
 	},
 	"devDependencies": {
