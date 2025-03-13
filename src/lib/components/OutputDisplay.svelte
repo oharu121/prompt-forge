@@ -5,26 +5,63 @@
   export let isLoading: boolean = false;
   export let isStreaming: boolean = false;
 
+  let displayedOutput = '';
+  let currentChunkIndex = 0;
+  let typingInterval: ReturnType<typeof setInterval>;
+  const TYPING_SPEED = 20; // milliseconds per character
+
+  function parseStreamData(text: string): string {
+    const lines = text.split('\n');
+    let content = '';
+    
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const jsonData = JSON.parse(line.slice(6));
+          if (jsonData.content) {
+            content += jsonData.content;
+          }
+        } catch (e) {
+          // Skip invalid JSON
+          continue;
+        }
+      }
+    }
+    
+    return content;
+  }
+
   function formatOutput(text: string) {
     // Convert line breaks to <br> tags and preserve whitespace
     return text.split('\n').map(line => line || '&nbsp;').join('<br>');
   }
 
-  // Add a blinking cursor effect for streaming
-  let cursorVisible = true;
-  let cursorInterval: ReturnType<typeof setInterval>;
-
-  $: if (isStreaming) {
-    cursorInterval = setInterval(() => {
-      cursorVisible = !cursorVisible;
-    }, 500);
-  } else if (cursorInterval) {
-    clearInterval(cursorInterval);
+  // Handle typing animation
+  $: if (isStreaming && output) {
+    const parsedContent = parseStreamData(output);
+    if (parsedContent !== displayedOutput) {
+      // Clear existing interval if any
+      if (typingInterval) clearInterval(typingInterval);
+      
+      // Start new typing animation
+      currentChunkIndex = displayedOutput.length;
+      typingInterval = setInterval(() => {
+        if (currentChunkIndex < parsedContent.length) {
+          displayedOutput = parsedContent.slice(0, currentChunkIndex + 1);
+          currentChunkIndex++;
+        } else {
+          clearInterval(typingInterval);
+        }
+      }, TYPING_SPEED);
+    }
+  } else if (!isStreaming) {
+    // When streaming ends, show full content
+    displayedOutput = parseStreamData(output);
   }
 
   onDestroy(() => {
-    if (cursorInterval) {
-      clearInterval(cursorInterval);
+    if (typingInterval) {
+      clearInterval(typingInterval);
     }
   });
 </script>
@@ -36,12 +73,11 @@
     <div class="flex justify-center items-center h-48">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
     </div>
-  {:else if output}
+  {:else if displayedOutput}
     <div class="prose prose-neutral max-w-none whitespace-pre-wrap">
-      {@html formatOutput(output)}
+      {@html formatOutput(displayedOutput)}
       {#if isStreaming}
-        <span class="inline-block w-2 h-4 bg-blue-600 transition-opacity duration-200" class:opacity-0={!cursorVisible}>
-        </span>
+        <span class="inline-block w-2 h-4 bg-blue-600 animate-pulse"></span>
       {/if}
     </div>
   {:else}
@@ -54,5 +90,14 @@
 <style>
   :global(.prose br) {
     margin-bottom: 1em;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .animate-pulse {
+    animation: blink 1s infinite;
   }
 </style> 

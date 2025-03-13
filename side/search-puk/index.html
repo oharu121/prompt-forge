@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUK検索くん</title>
+    <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+    <link rel="icon" type="image/png" href="img/favicon.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.min.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <button class="theme-switch" id="themeToggle">
+        <svg class="light-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <svg class="dark-icon hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+        <span>テーマ切替</span>
+    </button>
+
+    <div class="container">
+        <div class="center-content">
+            <div class="search-container">
+                <h1>PUK検索くん</h1>
+                <div class="search-box">
+                    <input type="text" 
+                           id="msisdnInput" 
+                           placeholder="電話番号を入力"
+                           maxlength="11">
+                    <button id="searchButton">検索</button>
+                </div>
+            </div>
+
+            <div class="results-container" id="resultsContainer">
+                <div id="resultsGrid" class="hidden">
+                    <div class="result-item">
+                        <div class="result-label">PUK</div>
+                        <div class="result-value-container">
+                            <span id="pukValue"></span>
+                            <button class="copy-button" data-copy="puk">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">ICCID</div>
+                        <div class="result-value-container">
+                            <span id="iccidValue"></span>
+                            <button class="copy-button" data-copy="iccid">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">更新日時</div>
+                        <div class="result-value-container">
+                            <span id="updatedAtValue"></span>
+                        </div>
+                    </div>
+                </div>
+                <div id="noResults" class="hidden">
+                    該当する情報が見つかりませんでした。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastify-js/1.12.0/toastify.js"></script>
+    <script src="js/dataLoader.js"></script>
+    <script src="database/data.js"></script>
+    <script src="database/data_2.js"></script>
+    <script src="database/data_3.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 

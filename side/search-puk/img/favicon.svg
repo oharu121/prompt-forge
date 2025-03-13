@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="32" height="32" rx="8" fill="#6366f1"/>
+    <!-- SIM card base -->
+    <path d="M10 8C9.44772 8 9 8.44772 9 9V23C9 23.5523 9.44772 24 10 24H22C22.5523 24 23 23.5523 23 23V12L19 8H10Z" fill="white"/>
+    <!-- Chip cutout -->
+    <path d="M12 14H20V20H12V14Z" fill="#6366f1"/>
+    <!-- Lock icon -->
+    <path d="M14 14V13C14 11.8954 14.8954 11 16 11C17.1046 11 18 11.8954 18 13V14M14.5 16.5C14.5 17.3284 15.1716 18 16 18C16.8284 18 17.5 17.3284 17.5 16.5C17.5 15.6716 16.8284 15 16 15C15.1716 15 14.5 15.6716 14.5 16.5Z" stroke="#6366f1" stroke-width="1.5" stroke-linecap="round"/>
+</svg> 

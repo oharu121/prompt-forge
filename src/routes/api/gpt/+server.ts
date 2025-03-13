@@ -1,7 +1,15 @@
 import { error } from '@sveltejs/kit';
+import https from 'https';
+import fetch from 'node-fetch';
 import type { RequestHandler } from '@sveltejs/kit';
+import { GPT_BASE_URL } from '$env/static/private';
 
-const GPT_API_URL = 'www.my-company-gpt/stream';
+const agent = new https.Agent(
+  {
+    rejectUnauthorized: false
+  }
+);
+
 export const POST: RequestHandler = async ({ request }) => {
   const accessToken = request.headers.get('Authorization')?.split(' ')[1];
   
@@ -12,42 +20,30 @@ export const POST: RequestHandler = async ({ request }) => {
   try {
     const { prompt } = await request.json();
     
-    const response = await fetch(GPT_API_URL, {
+    const response = await fetch(`${GPT_BASE_URL}/runs/stream`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ prompt })
-    });
-
-    // Create a new ReadableStream that will forward the events
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = response.body?.getReader();
-        if (!reader) {
-          controller.close();
-          return;
-        }
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-              controller.close();
-              break;
-            }
-            controller.enqueue(value);
+      body: JSON.stringify({ input: [
+          {
+            additional_kwargs: {
+            },
+            type: 'human',
+            example: false,
+            content: prompt,
+            filename: null,
+            imagepath: null,
           }
-        } catch (e) {
-          controller.error(e);
-        } finally {
-          reader.releaseLock();
-        }
-      }
+        ],
+        assistant_id: 'asst_01J000000000000000000000',
+        thread_id: 'thread_01J000000000000000000000',
+       }),
+       agent: agent
     });
 
-    return new Response(stream, {
+    return new Response(response.body as unknown as ReadableStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',

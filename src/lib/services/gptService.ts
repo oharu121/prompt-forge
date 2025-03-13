@@ -62,20 +62,7 @@ export class GptService {
           'Authorization': `Bearer ${this.accessToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ input: [
-          {
-            additional_kwargs: {
-            },
-            type: 'human',
-            example: false,
-            content: prompt,
-            filename: null,
-            imagepath: null,
-          }
-        ],
-        assistant_id: 'asst_01J000000000000000000000',
-        thread_id: 'thread_01J000000000000000000000',
-       })
+        body: JSON.stringify({prompt})
       });
 
       if (!response.ok) {

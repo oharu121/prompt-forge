@@ -1,7 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-
-const GPT_API_BASE_URL = 'www.my-company-gpt/threads';
+import { GPT_BASE_URL } from '$env/static/private';
 
 interface ThreadCreateRequest {
   assistant_id: string;
@@ -27,9 +26,9 @@ export const PUT: RequestHandler = async ({ request, params }) => {
     }
 
     // Generate UUID for the thread
-    const threadId = crypto.randomUUID();
+    const id = crypto.randomUUID();
     
-    const response = await fetch(`${GPT_API_BASE_URL}/${threadId}`, {
+    const response = await fetch(`${GPT_BASE_URL}/threads/${id}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
