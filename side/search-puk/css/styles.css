@@ -150,15 +150,54 @@ body::before {
     font-weight: 500;
 }
 
+@keyframes gradientFlow {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
 h1 {
     text-align: center;
     margin-bottom: 2.5rem;
-    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    background: linear-gradient(
+        135deg,
+        var(--gradient-start) 0%,
+        var(--gradient-end) 25%,
+        var(--primary-dark) 50%,
+        var(--gradient-end) 75%,
+        var(--gradient-start) 100%
+    );
+    background-size: 200% 200%;
+    animation: gradientFlow 5s ease infinite;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-size: 3rem;
     font-weight: 700;
     letter-spacing: -0.5px;
+    position: relative;
+}
+
+h1::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(
+        135deg,
+        var(--gradient-start) 0%,
+        var(--gradient-end) 100%
+    );
+    border-radius: 2px;
+    opacity: 0.7;
 }
 
 .search-box {
