@@ -77,7 +77,6 @@ export class GptService {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
-      let buffer = '';
 
       try {
         while (true) {
@@ -87,22 +86,19 @@ export class GptService {
             break;
           }
 
-          // Decode the chunk and add it to the buffer
+          // Decode the chunk
           const chunk = decoder.decode(value);
-          buffer += chunk;
           
-          // Process complete events in the buffer
-          const lines = buffer.split('\n\n');
-          // Keep the last potentially incomplete event in the buffer
-          buffer = lines.pop() || '';
+          // Process each event in the chunk
+          const events = chunk.split('\n\n').filter(event => event.trim() !== '');
           
-          for (const eventBlock of lines) {
-            const eventLines = eventBlock.split('\n');
+          for (const event of events) {
+            const lines = event.split('\n');
             let eventType = '';
             let eventData = '';
             
             // Extract event type and data
-            for (const line of eventLines) {
+            for (const line of lines) {
               if (line.startsWith('event: ')) {
                 eventType = line.substring(7).trim();
               } else if (line.startsWith('data: ')) {
@@ -126,6 +122,7 @@ export class GptService {
                     // Only process AI messages
                     if (message.type === 'ai' && message.content) {
                       fullContent += message.content;
+                      // Immediately send the updated content to the callback
                       onStream?.({ content: fullContent });
                     }
                   }
