@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import https from 'https';
 import fetch from 'node-fetch';
 import type { RequestHandler } from '@sveltejs/kit';
-import { GPT_BASE_URL } from '$env/static/private';
+import { DEFAULT_ASSISTANT_ID, GPT_BASE_URL } from '$env/static/private';
 
 const agent = new https.Agent(
   {
@@ -20,6 +20,29 @@ export const POST: RequestHandler = async ({ request }) => {
   try {
     const { prompt } = await request.json();
     
+    // First, create a new thread
+    const threadId = crypto.randomUUID();
+    const threadResponse = await fetch(`${GPT_BASE_URL}/threads/${threadId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        assistant_id: DEFAULT_ASSISTANT_ID,
+        name: `Thread-${new Date().toISOString()}`
+      }),
+      agent: agent
+    });
+
+    if (!threadResponse.ok) {
+      const errorData = await threadResponse.json() as { message?: string };
+      throw error(threadResponse.status, {
+        message: errorData.message || 'Failed to create thread'
+      });
+    }
+
+    // Now use the new thread ID for the GPT request
     const response = await fetch(`${GPT_BASE_URL}/runs/stream`, {
       method: 'POST',
       headers: {
@@ -37,8 +60,9 @@ export const POST: RequestHandler = async ({ request }) => {
             imagepath: null,
           }
         ],
-        assistant_id: 'asst_01J000000000000000000000',
-        thread_id: 'thread_01J000000000000000000000',
+        assistant_id: DEFAULT_ASSISTANT_ID
+        ,
+        thread_id: threadId,
        }),
        agent: agent
     });

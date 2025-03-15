@@ -1,11 +1,19 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { GPT_BASE_URL } from '$env/static/private';
+import https from 'https';
+import fetch from 'node-fetch';
 
 interface ThreadCreateRequest {
   assistant_id: string;
   name: string;
 }
+
+const agent = new https.Agent(
+  {
+    rejectUnauthorized: false
+  }
+);
 
 export const PUT: RequestHandler = async ({ request, params }) => {
   const accessToken = request.headers.get('Authorization')?.split(' ')[1];
@@ -37,11 +45,12 @@ export const PUT: RequestHandler = async ({ request, params }) => {
       body: JSON.stringify({
         assistant_id: body.assistant_id,
         name: body.name
-      })
+      }),
+      agent: agent
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json() as { message?: string };
       throw error(response.status, {
         message: errorData.message || 'Failed to create thread'
       });

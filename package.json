@@ -75,6 +75,8 @@
 		"drizzle-orm": "^0.38.4",
 		"node-fetch": "^3.3.2",
 		"postgres": "^3.4.5",
-		"shadcn-svelte": "^0.14.0"
+		"shadcn-svelte": "^0.14.0",
+		"stream-chain": "^3.4.0",
+		"stream-json": "^1.9.1"
 	}
 }
