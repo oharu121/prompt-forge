@@ -42,7 +42,11 @@
           error = response.error;
           output = '';
           isStreaming = false;
+        } else if (response.isIncremental) {
+          // For incremental updates, pass the chunk directly to OutputDisplay
+          output = response.content;
         } else {
+          // For non-incremental updates (like the final one)
           output = response.content;
           if (response.done) {
             isStreaming = false;

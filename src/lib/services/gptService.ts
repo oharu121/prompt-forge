@@ -2,6 +2,7 @@ interface GptResponse {
   content: string;
   error?: string;
   done?: boolean;
+  isIncremental?: boolean;
 }
 
 interface ThreadCreateResponse {
@@ -121,9 +122,20 @@ export class GptService {
                   for (const message of parsedData) {
                     // Only process AI messages
                     if (message.type === 'ai' && message.content) {
-                      fullContent += message.content;
-                      // Immediately send the updated content to the callback
-                      onStream?.({ content: fullContent });
+                      // Get the incremental content
+                      const newContent = message.content;
+                      const incrementalContent = newContent.substring(fullContent.length);
+                      
+                      // Update the full content
+                      fullContent = newContent;
+                      
+                      // Send only the incremental content to the callback
+                      if (incrementalContent) {
+                        onStream?.({ 
+                          content: incrementalContent, 
+                          isIncremental: true 
+                        });
+                      }
                     }
                   }
                 }

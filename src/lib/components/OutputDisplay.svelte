@@ -9,28 +9,39 @@
   let currentChunkIndex = 0;
   let typingInterval: ReturnType<typeof setInterval>;
   const TYPING_SPEED = 20; // milliseconds per character
+  let currentTypingContent = '';
 
   function formatOutput(text: string) {
     // Convert line breaks to <br> tags and preserve whitespace
     return text.split('\n').map(line => line || '&nbsp;').join('<br>');
   }
 
-  // Handle typing animation
-  $: if (isStreaming && output) {
+  // Start typing animation for new content
+  function startTypingAnimation(content: string) {
     // Clear existing interval if any
     if (typingInterval) clearInterval(typingInterval);
     
-    // Start new typing animation from where we left off
-    currentChunkIndex = displayedOutput.length;
+    // Set up the content to type
+    currentTypingContent = content;
+    currentChunkIndex = 0;
+    
+    // Start typing animation
     typingInterval = setInterval(() => {
-      if (currentChunkIndex < output.length) {
-        displayedOutput = output.slice(0, currentChunkIndex + 1);
+      if (currentChunkIndex < currentTypingContent.length) {
+        displayedOutput += currentTypingContent[currentChunkIndex];
         currentChunkIndex++;
       } else {
         clearInterval(typingInterval);
+        currentTypingContent = '';
       }
     }, TYPING_SPEED);
-  } else if (!isStreaming) {
+  }
+
+  // Handle output changes
+  $: if (isStreaming && output) {
+    // If we're streaming, start typing the new content
+    startTypingAnimation(output);
+  } else if (!isStreaming && output) {
     // When streaming ends, show full content
     displayedOutput = output;
   }
