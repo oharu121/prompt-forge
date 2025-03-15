@@ -10,27 +10,6 @@
   let typingInterval: ReturnType<typeof setInterval>;
   const TYPING_SPEED = 20; // milliseconds per character
 
-  function parseStreamData(text: string): string {
-    const lines = text.split('\n');
-    let content = '';
-    
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        try {
-          const jsonData = JSON.parse(line.slice(6));
-          if (jsonData.content) {
-            content += jsonData.content;
-          }
-        } catch (e) {
-          // Skip invalid JSON
-          continue;
-        }
-      }
-    }
-    
-    return content;
-  }
-
   function formatOutput(text: string) {
     // Convert line breaks to <br> tags and preserve whitespace
     return text.split('\n').map(line => line || '&nbsp;').join('<br>');
@@ -38,25 +17,22 @@
 
   // Handle typing animation
   $: if (isStreaming && output) {
-    const parsedContent = parseStreamData(output);
-    if (parsedContent !== displayedOutput) {
-      // Clear existing interval if any
-      if (typingInterval) clearInterval(typingInterval);
-      
-      // Start new typing animation
-      currentChunkIndex = displayedOutput.length;
-      typingInterval = setInterval(() => {
-        if (currentChunkIndex < parsedContent.length) {
-          displayedOutput = parsedContent.slice(0, currentChunkIndex + 1);
-          currentChunkIndex++;
-        } else {
-          clearInterval(typingInterval);
-        }
-      }, TYPING_SPEED);
-    }
+    // Clear existing interval if any
+    if (typingInterval) clearInterval(typingInterval);
+    
+    // Start new typing animation from where we left off
+    currentChunkIndex = displayedOutput.length;
+    typingInterval = setInterval(() => {
+      if (currentChunkIndex < output.length) {
+        displayedOutput = output.slice(0, currentChunkIndex + 1);
+        currentChunkIndex++;
+      } else {
+        clearInterval(typingInterval);
+      }
+    }, TYPING_SPEED);
   } else if (!isStreaming) {
     // When streaming ends, show full content
-    displayedOutput = parseStreamData(output);
+    displayedOutput = output;
   }
 
   onDestroy(() => {

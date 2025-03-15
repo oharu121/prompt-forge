@@ -77,6 +77,7 @@ export class GptService {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
+      let buffer = '';
 
       try {
         while (true) {
@@ -86,9 +87,54 @@ export class GptService {
             break;
           }
 
+          // Decode the chunk and add it to the buffer
           const chunk = decoder.decode(value);
-          fullContent += chunk;
-          onStream?.({ content: fullContent });
+          buffer += chunk;
+          
+          // Process complete events in the buffer
+          const lines = buffer.split('\n\n');
+          // Keep the last potentially incomplete event in the buffer
+          buffer = lines.pop() || '';
+          
+          for (const eventBlock of lines) {
+            const eventLines = eventBlock.split('\n');
+            let eventType = '';
+            let eventData = '';
+            
+            // Extract event type and data
+            for (const line of eventLines) {
+              if (line.startsWith('event: ')) {
+                eventType = line.substring(7).trim();
+              } else if (line.startsWith('data: ')) {
+                eventData = line.substring(6).trim();
+              }
+            }
+            
+            // Skip metadata and end events
+            if (eventType === 'metadata' || eventType === 'end') {
+              continue;
+            }
+            
+            // Process data events
+            if (eventType === 'data' && eventData) {
+              try {
+                const parsedData = JSON.parse(eventData);
+                
+                // Process array of messages
+                if (Array.isArray(parsedData)) {
+                  for (const message of parsedData) {
+                    // Only process AI messages
+                    if (message.type === 'ai' && message.content) {
+                      fullContent += message.content;
+                      onStream?.({ content: fullContent });
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error('Error parsing event data:', e);
+              }
+            }
+          }
         }
 
         return { content: fullContent };

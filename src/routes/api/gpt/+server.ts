@@ -58,6 +58,7 @@ export const POST: RequestHandler = async ({ request }) => {
             content: prompt,
             filename: null,
             imagepath: null,
+            web_search_enabled: true
           }
         ],
         assistant_id: DEFAULT_ASSISTANT_ID
