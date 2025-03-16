@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import https from 'https';
 import fetch from 'node-fetch';
 import type { RequestHandler } from '@sveltejs/kit';
-import { DEFAULT_ASSISTANT_ID, GPT_BASE_URL } from '$env/static/private';
+import { DEFAULT_ASSISTANT_ID, GPT_SERVICE_URL } from '$env/static/private';
 
 const agent = new https.Agent(
   {
@@ -22,7 +22,7 @@ export const POST: RequestHandler = async ({ request }) => {
     
     // First, create a new thread
     const threadId = crypto.randomUUID();
-    const threadResponse = await fetch(`${GPT_BASE_URL}/threads/${threadId}`, {
+    const threadResponse = await fetch(`${GPT_SERVICE_URL}/threads/${threadId}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -43,7 +43,7 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     // Now use the new thread ID for the GPT request
-    const response = await fetch(`${GPT_BASE_URL}/runs/stream`, {
+    const response = await fetch(`${GPT_SERVICE_URL}/runs/stream`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,

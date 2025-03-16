@@ -24,7 +24,7 @@
 		"browser": "npx @agentdeskai/browser-tools-server",
 		"preupdate": "git -c http.sslVerify=false -c http.proxy= -c https.proxy= reset --hard origin/main",
 		"update": "git -c http.sslVerify=false -c http.proxy= -c https.proxy= pull origin main",
-		"postupdate": "npm ci"
+		"postupdate": "npm install"
 	},
 	"devDependencies": {
 		"@chromatic-com/storybook": "^3.2.4",
@@ -71,6 +71,7 @@
 	"dependencies": {
 		"@inlang/paraglide-sveltekit": "^0.15.5",
 		"@node-rs/argon2": "^2.0.2",
+		"@okta/okta-auth-js": "^7.11.1",
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
 		"@types/dompurify": "^3.0.5",

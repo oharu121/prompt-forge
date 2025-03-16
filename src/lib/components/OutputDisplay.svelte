@@ -5,7 +5,7 @@
   import { mangle } from "marked-mangle";
   import { markedSmartypants } from "marked-smartypants";
   import { markedXhtml } from "marked-xhtml";
-
+  import { browser } from '$app/environment';
 
   export let output: string = '';
   export let isLoading: boolean = false;
@@ -16,6 +16,8 @@
   let typingInterval: ReturnType<typeof setInterval>;
   const TYPING_SPEED = 20; // milliseconds per character
   let currentTypingContent = '';
+  let sanitizedOutput = '';
+  let purify: typeof DOMPurify | null = null;
 
   onMount(() => {
     // Configure marked options
@@ -27,23 +29,30 @@
       ...markedXhtml(),
     });
 
-
-    // Configure DOMPurify
-    DOMPurify.setConfig({
-      ALLOWED_TAGS: [
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'p', 'a', 'ul', 'ol',
-        'nl', 'li', 'b', 'i', 'strong', 'em', 'strike', 'code', 'hr', 'br', 'div',
-        'table', 'thead', 'caption', 'tbody', 'tr', 'th', 'td', 'pre', 'span'
-      ],
-      ALLOWED_ATTR: ['href', 'name', 'target', 'class', 'id']
-    });
+    // Initialize DOMPurify only in browser environment
+    if (browser) {
+      purify = DOMPurify;
+      // Configure DOMPurify
+      purify.setConfig({
+        ALLOWED_TAGS: [
+          'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'p', 'a', 'ul', 'ol',
+          'nl', 'li', 'b', 'i', 'strong', 'em', 'strike', 'code', 'hr', 'br', 'div',
+          'table', 'thead', 'caption', 'tbody', 'tr', 'th', 'td', 'pre', 'span'
+        ],
+        ALLOWED_ATTR: ['href', 'name', 'target', 'class', 'id']
+      });
+    }
   });
 
   // Render markdown to sanitized HTML
   async function renderMarkdown(text: string): Promise<string> {
     try {
       const rawHtml = await marked.parse(text);
-      return DOMPurify.sanitize(rawHtml);
+      // Only sanitize in browser environment
+      if (browser && purify) {
+        return purify.sanitize(rawHtml);
+      }
+      return rawHtml;
     } catch (e) {
       console.error('Error rendering markdown:', e);
       return text; // Fallback to plain text if rendering fails
@@ -80,6 +89,11 @@
     displayedOutput = output;
   }
 
+  $: (async () => {
+    sanitizedOutput = await renderMarkdown(displayedOutput);
+  })();
+
+  
   onDestroy(() => {
     if (typingInterval) {
       clearInterval(typingInterval);
@@ -96,7 +110,7 @@
     </div>
   {:else if displayedOutput}
     <div class="prose prose-neutral max-w-none">
-      {@html await renderMarkdown(displayedOutput)}
+      {@html sanitizedOutput}
       {#if isStreaming}
         <span class="inline-block w-2 h-4 bg-blue-600 animate-pulse"></span>
       {/if}

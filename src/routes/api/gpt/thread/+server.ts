@@ -1,6 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { GPT_BASE_URL } from '$env/static/private';
+import { GPT_SERVICE_URL } from '$env/static/private';
 import https from 'https';
 import fetch from 'node-fetch';
 
@@ -36,7 +36,7 @@ export const PUT: RequestHandler = async ({ request, params }) => {
     // Generate UUID for the thread
     const id = crypto.randomUUID();
     
-    const response = await fetch(`${GPT_BASE_URL}/threads/${id}`, {
+    const response = await fetch(`${GPT_SERVICE_URL}/threads/${id}`, {
       method: 'PUT',
       headers: {
         'Authorization': `Bearer ${accessToken}`,

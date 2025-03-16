@@ -1,6 +1,7 @@
 <!-- Main content page -->
 <script lang="ts">
   import ApiKeySettings from '$lib/components/ApiKeySettings.svelte';
+  import AuthSettings from '$lib/components/AuthSettings.svelte';
   import TemplateManager from '$lib/components/TemplateManager.svelte';
   import OutputDisplay from '$lib/components/OutputDisplay.svelte';
   import type { Template } from '$lib/types/Template';
@@ -73,7 +74,16 @@
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Left Column: Settings and Templates -->
     <div class="lg:col-span-1 space-y-6">
-      <ApiKeySettings />
+      <div class="space-y-6">
+        <AuthSettings />
+        <!-- Keeping ApiKeySettings as a fallback option -->
+        <details class="mt-4">
+          <summary class="cursor-pointer text-sm text-gray-500">Alternative: API Key Authentication</summary>
+          <div class="mt-2">
+            <ApiKeySettings />
+          </div>
+        </details>
+      </div>
       <TemplateManager on:select={handleTemplateSelect} />
     </div>
 
