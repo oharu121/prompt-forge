@@ -32,9 +32,24 @@ let oktaAuth: OktaAuth | null = null;
 if (browser) {
   // Use our server-side proxy to avoid CORS issues
   const useProxy = true; // Set to false to use direct Okta communication
+  
+  // Fix for the duplicated oauth2 path issue
+  // The Okta Auth SDK automatically appends oauth2/v1/authorize to the issuer URL
+  // So we need to provide the base URL without the oauth2/<appId>/v1 part
+  
+  // Extract the base URL and app ID from the issuer URL
+  const issuerUrlParts = PUBLIC_OKTA_ISSUER.match(/^(https:\/\/[^\/]+)\/oauth2\/([^\/]+)\/v1$/);
+  const oktaBaseUrl = issuerUrlParts ? issuerUrlParts[1] : PUBLIC_OKTA_ISSUER;
+  const appId = issuerUrlParts ? issuerUrlParts[2] : '';
+  
   const issuerUrl = useProxy 
     ? window.location.origin + '/api/okta-proxy' 
-    : PUBLIC_OKTA_ISSUER;
+    : oktaBaseUrl;
+  
+  // For debugging
+  console.log('Okta Base URL:', oktaBaseUrl);
+  console.log('App ID:', appId);
+  console.log('Issuer URL:', issuerUrl);
   
   oktaAuth = new OktaAuth({
     issuer: issuerUrl,
@@ -42,6 +57,11 @@ if (browser) {
     redirectUri: window.location.origin + '/login/callback', // Use full origin for redirect
     scopes: ['openid', 'email', 'profile'],
     pkce: true,
+    // If using the proxy, we need to specify the authorization server ID
+    // to construct the correct URLs
+    authorizeUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/authorize` : undefined,
+    tokenUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/token` : undefined,
+    userinfoUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/userinfo` : undefined,
     tokenManager: {
       storage: 'localStorage',
       storageKey: 'ota-token-storage' // Match the key used by GPT service
