@@ -69,7 +69,7 @@ if (browser) {
     userinfoUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/userinfo` : undefined,
     tokenManager: {
       storage: 'localStorage',
-      storageKey: 'ota-token-storage' // Match the key used by GPT service
+      storageKey: 'prompt-forge-token-storage' // Use a unique key different from GPT service
     },
     // Add a response type to ensure we get tokens
     responseType: ['token', 'id_token']

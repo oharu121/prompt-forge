@@ -46,8 +46,14 @@ export const GET: RequestHandler = async ({ params, request, url }) => {
     if (!response.ok) {
       console.error('Okta proxy error:', response.status, response.statusText);
       
+      // Get the response text
+      const responseText = await response.text();
+      
+      // Log the first 500 characters of the response for debugging
+      console.error('Response content (first 500 chars):', responseText.substring(0, 500));
+      
       // Return the response as-is, preserving status code and headers
-      return new Response(await response.text(), {
+      return new Response(responseText, {
         status: response.status,
         headers: {
           'Content-Type': response.headers.get('Content-Type') || 'application/json'
@@ -128,8 +134,14 @@ export const POST: RequestHandler = async ({ params, request }) => {
     if (!response.ok) {
       console.error('Okta proxy error:', response.status, response.statusText);
       
+      // Get the response text
+      const responseText = await response.text();
+      
+      // Log the first 500 characters of the response for debugging
+      console.error('Response content (first 500 chars):', responseText.substring(0, 500));
+      
       // Return the response as-is, preserving status code and headers
-      return new Response(await response.text(), {
+      return new Response(responseText, {
         status: response.status,
         headers: {
           'Content-Type': response.headers.get('Content-Type') || 'application/json'
