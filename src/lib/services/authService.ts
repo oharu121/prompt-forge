@@ -1,7 +1,7 @@
 import { OktaAuth, type UserClaims } from '@okta/okta-auth-js';
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import { PUBLIC_OKTA_CLIENT_ID, PUBLIC_OKTA_ISSUER } from '$env/static/public';
+import { PUBLIC_OKTA_CLIENT_ID, PUBLIC_OKTA_ISSUER, PUBLIC_OKTA_REDIRECT_URI } from '$env/static/public';
 
 // Define the auth state interface
 interface AuthState {
@@ -51,10 +51,15 @@ if (browser) {
   console.log('App ID:', appId);
   console.log('Issuer URL:', issuerUrl);
   
+  // Store our actual redirect URI to use after authentication
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('actual_redirect_uri', window.location.origin + '/login/callback');
+  }
+  
   oktaAuth = new OktaAuth({
     issuer: issuerUrl,
     clientId: PUBLIC_OKTA_CLIENT_ID,
-    redirectUri: window.location.origin + '/login/callback', // Use full origin for redirect
+    redirectUri: PUBLIC_OKTA_REDIRECT_URI, // Use the registered redirect URI
     scopes: ['openid', 'email', 'profile'],
     pkce: true,
     // If using the proxy, we need to specify the authorization server ID
@@ -65,7 +70,9 @@ if (browser) {
     tokenManager: {
       storage: 'localStorage',
       storageKey: 'ota-token-storage' // Match the key used by GPT service
-    }
+    },
+    // Add a response type to ensure we get tokens
+    responseType: ['token', 'id_token']
   });
 }
 
@@ -248,8 +255,17 @@ export function login() {
     throw new Error('Authentication is only available in browser environment');
   }
 
+  // Store the current URL to redirect back after authentication
+  sessionStorage.setItem('auth_redirect_url', window.location.href);
+
+  // Add a custom state parameter to track our app's state
+  const customState = btoa(JSON.stringify({
+    appRedirect: window.location.origin + '/login/callback'
+  }));
+
   oktaAuth.token.getWithRedirect({
-    scopes: ['openid', 'email', 'profile']
+    scopes: ['openid', 'email', 'profile'],
+    state: customState
   });
 }
 
