@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { marked } from 'marked';
+  import DOMPurify from 'dompurify';
+  import { mangle } from "marked-mangle";
+  import { markedSmartypants } from "marked-smartypants";
+  import { markedXhtml } from "marked-xhtml";
+
 
   export let output: string = '';
   export let isLoading: boolean = false;
@@ -11,9 +17,37 @@
   const TYPING_SPEED = 20; // milliseconds per character
   let currentTypingContent = '';
 
-  function formatOutput(text: string) {
-    // Convert line breaks to <br> tags and preserve whitespace
-    return text.split('\n').map(line => line || '&nbsp;').join('<br>');
+  onMount(() => {
+    // Configure marked options
+    marked.use({
+      gfm: true, // GitHub Flavored Markdown
+      breaks: true, // Convert \n to <br>
+      ...mangle(),
+      ...markedSmartypants(),
+      ...markedXhtml(),
+    });
+
+
+    // Configure DOMPurify
+    DOMPurify.setConfig({
+      ALLOWED_TAGS: [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'p', 'a', 'ul', 'ol',
+        'nl', 'li', 'b', 'i', 'strong', 'em', 'strike', 'code', 'hr', 'br', 'div',
+        'table', 'thead', 'caption', 'tbody', 'tr', 'th', 'td', 'pre', 'span'
+      ],
+      ALLOWED_ATTR: ['href', 'name', 'target', 'class', 'id']
+    });
+  });
+
+  // Render markdown to sanitized HTML
+  async function renderMarkdown(text: string): Promise<string> {
+    try {
+      const rawHtml = await marked.parse(text);
+      return DOMPurify.sanitize(rawHtml);
+    } catch (e) {
+      console.error('Error rendering markdown:', e);
+      return text; // Fallback to plain text if rendering fails
+    }
   }
 
   // Start typing animation for new content
@@ -61,8 +95,8 @@
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
     </div>
   {:else if displayedOutput}
-    <div class="prose prose-neutral max-w-none whitespace-pre-wrap">
-      {@html formatOutput(displayedOutput)}
+    <div class="prose prose-neutral max-w-none">
+      {@html await renderMarkdown(displayedOutput)}
       {#if isStreaming}
         <span class="inline-block w-2 h-4 bg-blue-600 animate-pulse"></span>
       {/if}
@@ -75,8 +109,49 @@
 </div>
 
 <style>
-  :global(.prose br) {
-    margin-bottom: 1em;
+  :global(.prose) {
+    font-size: 1rem;
+    line-height: 1.75;
+  }
+
+  :global(.prose pre) {
+    background-color: #f3f4f6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+
+  :global(.prose code) {
+    background-color: #f3f4f6;
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.25rem;
+    font-size: 0.875em;
+  }
+
+  :global(.prose blockquote) {
+    border-left: 4px solid #e5e7eb;
+    padding-left: 1rem;
+    font-style: italic;
+    color: #6b7280;
+  }
+
+  :global(.prose ul, .prose ol) {
+    padding-left: 1.5rem;
+  }
+
+  :global(.prose table) {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+  }
+
+  :global(.prose th, .prose td) {
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem;
+  }
+
+  :global(.prose th) {
+    background-color: #f9fafb;
   }
 
   @keyframes blink {

@@ -23,7 +23,8 @@
 		"build-storybook": "storybook build",
 		"browser": "npx @agentdeskai/browser-tools-server",
 		"preupdate": "git -c http.sslVerify=false -c http.proxy= -c https.proxy= reset --hard origin/main",
-		"update": "git -c http.sslVerify=false -c http.proxy= -c https.proxy= pull origin main"
+		"update": "git -c http.sslVerify=false -c http.proxy= -c https.proxy= pull origin main",
+		"postupdate": "npm ci"
 	},
 	"devDependencies": {
 		"@chromatic-com/storybook": "^3.2.4",
@@ -72,7 +73,14 @@
 		"@node-rs/argon2": "^2.0.2",
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
+		"@types/dompurify": "^3.0.5",
+		"@types/marked": "^5.0.2",
+		"dompurify": "^3.2.4",
 		"drizzle-orm": "^0.38.4",
+		"marked": "^15.0.7",
+		"marked-mangle": "^1.1.10",
+		"marked-smartypants": "^1.1.9",
+		"marked-xhtml": "^1.0.12",
 		"node-fetch": "^3.3.2",
 		"postgres": "^3.4.5",
 		"shadcn-svelte": "^0.14.0",
