@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { initAuth } from '$lib/services/authService';
+  import { initAuth, authState } from '$lib/services/authService';
   
   let error: string | null = null;
   let isProcessing = true;
@@ -9,9 +9,50 @@
   onMount(async () => {
     try {
       console.log("Processing Okta callback...");
+      
+      // Check if we have a state parameter that contains our custom state
+      const urlParams = new URLSearchParams(window.location.search);
+      const stateParam = urlParams.get('state');
+      
+      if (stateParam) {
+        try {
+          // Try to decode the state parameter
+          const decodedState = JSON.parse(atob(stateParam));
+          console.log("Decoded state:", decodedState);
+          
+          // If we have a custom appRedirect, store it
+          if (decodedState.appRedirect) {
+            sessionStorage.setItem('actual_redirect_uri', decodedState.appRedirect);
+          }
+        } catch (e) {
+          console.warn("Could not decode state parameter:", e);
+        }
+      }
+      
+      // Initialize auth and process the tokens
       await initAuth();
-      isProcessing = false;
-      goto('/');
+      
+      // Check if authentication was successful
+      let authenticated = false;
+      const unsubscribe = authState.subscribe(state => {
+        authenticated = state.isAuthenticated;
+      });
+      unsubscribe();
+      
+      if (authenticated) {
+        console.log("Authentication successful");
+        
+        // Get the redirect URL from session storage
+        const redirectUrl = sessionStorage.getItem('auth_redirect_url') || '/';
+        sessionStorage.removeItem('auth_redirect_url'); // Clean up
+        
+        isProcessing = false;
+        goto(redirectUrl);
+      } else {
+        console.error("Authentication failed");
+        isProcessing = false;
+        error = "Authentication failed. Please try again.";
+      }
     } catch (err) {
       console.error("Error processing Okta callback:", err);
       isProcessing = false;
