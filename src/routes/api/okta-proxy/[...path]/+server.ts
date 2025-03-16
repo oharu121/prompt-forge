@@ -38,26 +38,52 @@ export const GET: RequestHandler = async ({ params, request, url }) => {
     const response = await fetch(targetUrl.toString(), {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
+        'Accept': 'application/json, text/html, */*',
         'Content-Type': 'application/json'
       }
     });
     
     if (!response.ok) {
       console.error('Okta proxy error:', response.status, response.statusText);
+      
+      // Return the response as-is, preserving status code and headers
       return new Response(await response.text(), {
         status: response.status,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': response.headers.get('Content-Type') || 'application/json'
         }
       });
     }
     
-    const data = await response.json();
-    return json(data);
+    // Check content type to determine how to handle the response
+    const contentType = response.headers.get('Content-Type') || '';
+    
+    if (contentType.includes('application/json')) {
+      // Handle JSON response
+      const data = await response.json();
+      return json(data);
+    } else if (contentType.includes('text/html')) {
+      // Handle HTML response
+      const html = await response.text();
+      return new Response(html, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html'
+        }
+      });
+    } else {
+      // Handle other response types
+      const text = await response.text();
+      return new Response(text, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType
+        }
+      });
+    }
   } catch (error) {
     console.error('Error in Okta proxy:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
@@ -93,7 +119,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
     const response = await fetch(targetUrl.toString(), {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        'Accept': 'application/json, text/html, */*',
         'Content-Type': 'application/json'
       },
       body
@@ -101,19 +127,45 @@ export const POST: RequestHandler = async ({ params, request }) => {
     
     if (!response.ok) {
       console.error('Okta proxy error:', response.status, response.statusText);
+      
+      // Return the response as-is, preserving status code and headers
       return new Response(await response.text(), {
         status: response.status,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': response.headers.get('Content-Type') || 'application/json'
         }
       });
     }
     
-    const data = await response.json();
-    return json(data);
+    // Check content type to determine how to handle the response
+    const contentType = response.headers.get('Content-Type') || '';
+    
+    if (contentType.includes('application/json')) {
+      // Handle JSON response
+      const data = await response.json();
+      return json(data);
+    } else if (contentType.includes('text/html')) {
+      // Handle HTML response
+      const html = await response.text();
+      return new Response(html, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/html'
+        }
+      });
+    } else {
+      // Handle other response types
+      const text = await response.text();
+      return new Response(text, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType
+        }
+      });
+    }
   } catch (error) {
     console.error('Error in Okta proxy:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
