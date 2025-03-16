@@ -1,3 +1,5 @@
+import { getAccessToken } from './authService';
+
 interface GptResponse {
   content: string;
   error?: string;
@@ -22,15 +24,23 @@ export class GptService {
   }
 
   static async createThread(assistantId: string, name: string): Promise<ThreadCreateResponse> {
-    if (!this.accessToken) {
-      throw new Error('Access token not set');
-    }
-
     try {
+      // First try to get token from auth service
+      let token = await getAccessToken();
+      
+      // If not available, fall back to manually set token
+      if (!token && this.accessToken) {
+        token = this.accessToken;
+      }
+      
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch('/api/gpt/thread', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -52,15 +62,23 @@ export class GptService {
   }
 
   static async generateResponse(prompt: string, onStream?: StreamCallback): Promise<GptResponse> {
-    if (!this.accessToken) {
-      throw new Error('Access token not set');
-    }
-
     try {
+      // First try to get token from auth service
+      let token = await getAccessToken();
+      
+      // If not available, fall back to manually set token
+      if (!token && this.accessToken) {
+        token = this.accessToken;
+      }
+      
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch('/api/gpt', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({prompt})
@@ -158,6 +176,42 @@ export class GptService {
       };
       onStream?.(errorResponse);
       return errorResponse;
+    }
+  }
+
+  static async makeRequest(endpoint: string, data: any) {
+    try {
+      // First try to get token from auth service
+      let token = await getAccessToken();
+      
+      // If not available, fall back to manually set token
+      if (!token && this.accessToken) {
+        token = this.accessToken;
+      }
+      
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+      
+      // Make request to your proxy server with the access token
+      const response = await fetch('/api/proxy/' + endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Request failed with status ${response.status}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('Error in GPT service request:', error);
+      throw error;
     }
   }
 } 

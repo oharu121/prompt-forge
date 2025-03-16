@@ -16,6 +16,7 @@
   let typingInterval: ReturnType<typeof setInterval>;
   const TYPING_SPEED = 20; // milliseconds per character
   let currentTypingContent = '';
+  let sanitizedOutput = '';
 
   onMount(() => {
     // Configure marked options
@@ -80,6 +81,11 @@
     displayedOutput = output;
   }
 
+  $: (async () => {
+    sanitizedOutput = await renderMarkdown(displayedOutput);
+  })();
+
+  
   onDestroy(() => {
     if (typingInterval) {
       clearInterval(typingInterval);
@@ -96,7 +102,7 @@
     </div>
   {:else if displayedOutput}
     <div class="prose prose-neutral max-w-none">
-      {@html await renderMarkdown(displayedOutput)}
+      {@html sanitizedOutput}
       {#if isStreaming}
         <span class="inline-block w-2 h-4 bg-blue-600 animate-pulse"></span>
       {/if}
