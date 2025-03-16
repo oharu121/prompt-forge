@@ -8,10 +8,12 @@
   
   onMount(async () => {
     try {
+      console.log("Processing Okta callback...");
       await initAuth();
       isProcessing = false;
       goto('/');
     } catch (err) {
+      console.error("Error processing Okta callback:", err);
       isProcessing = false;
       error = err instanceof Error ? err.message : 'Unknown error occurred';
     }

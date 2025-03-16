@@ -30,10 +30,16 @@ let oktaAuth: OktaAuth | null = null;
 
 // Only initialize in browser environment
 if (browser) {
+  // Use our server-side proxy to avoid CORS issues
+  const useProxy = true; // Set to false to use direct Okta communication
+  const issuerUrl = useProxy 
+    ? window.location.origin + '/api/okta-proxy' 
+    : PUBLIC_OKTA_ISSUER;
+  
   oktaAuth = new OktaAuth({
-    issuer: PUBLIC_OKTA_ISSUER,
+    issuer: issuerUrl,
     clientId: PUBLIC_OKTA_CLIENT_ID,
-    redirectUri: '/login/callback',
+    redirectUri: window.location.origin + '/login/callback', // Use full origin for redirect
     scopes: ['openid', 'email', 'profile'],
     pkce: true,
     tokenManager: {
