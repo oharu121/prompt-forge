@@ -70,6 +70,10 @@ if (browser) {
     // Add custom URLs for other endpoints
     logoutUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/logout` : undefined,
     revokeUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/revoke` : undefined,
+    // Add Identity Engine endpoints
+    idx: {
+      useGenericRemediator: true
+    },
     // Add a custom HTTP request client to route all requests through our proxy
     httpRequestClient: async (requestInfo: any) => {
       try {
@@ -169,6 +173,34 @@ if (browser) {
     // Add a response type to ensure we get tokens
     responseType: ['token', 'id_token']
   });
+  
+  // Add a global fetch interceptor to catch introspection requests
+  if (useProxy) {
+    const originalFetch = window.fetch;
+    window.fetch = async function(input, init) {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      
+      // Check if this is an introspection request
+      if (url.includes('/idp/idx/introspect')) {
+        console.log('[Fetch Interceptor] Caught introspection request:', url);
+        
+        // Redirect to our proxy
+        const proxyUrl = window.location.origin + '/api/okta-proxy/idp/idx/introspect';
+        console.log('[Fetch Interceptor] Redirecting to:', proxyUrl);
+        
+        // Always use POST for introspection
+        const newInit = {
+          ...init,
+          method: 'POST'
+        };
+        
+        return originalFetch(proxyUrl, newInit);
+      }
+      
+      // For all other requests, proceed normally
+      return originalFetch(input, init);
+    };
+  }
 }
 
 // Helper function to extract token values safely
