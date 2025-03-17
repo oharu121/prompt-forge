@@ -1,6 +1,5 @@
 <!-- Main content page -->
 <script lang="ts">
-  import { onMount } from 'svelte';
   import ApiKeySettings from '$lib/components/ApiKeySettings.svelte';
   import AuthSettings from '$lib/components/AuthSettings.svelte';
   import TemplateManager from '$lib/components/TemplateManager.svelte';
@@ -15,41 +14,6 @@
   let isStreaming = false;
   let selectedTemplate: Template | null = null;
   let error: string | null = null;
-  let tokenImported = false;
-
-  // Handle tokens from URL fragment
-  onMount(() => {
-    if (typeof window !== 'undefined') {
-      // Check for tokens in URL fragment
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const accessToken = params.get('access_token');
-      const idToken = params.get('id_token');
-      
-      if (accessToken) {
-        try {
-          // Store tokens in localStorage
-          const tokenStorage = {
-            accessToken: { value: accessToken },
-            idToken: { value: idToken || '' }
-          };
-          
-          localStorage.setItem('prompt-forge-token-storage', JSON.stringify(tokenStorage));
-          
-          // Set the token in GptService
-          GptService.setAccessToken(accessToken);
-          
-          // Remove tokens from URL (for security)
-          window.history.replaceState(null, '', window.location.pathname);
-          
-          tokenImported = true;
-          console.log('Token imported successfully');
-        } catch (e) {
-          console.error('Error storing token:', e);
-        }
-      }
-    }
-  });
 
   function handleTemplateSelect(event: CustomEvent<Template>) {
     selectedTemplate = event.detail;
@@ -106,13 +70,6 @@
 
 <main class="container mx-auto px-4 py-8">
   <h1 class="text-4xl font-bold mb-6">Prompt Forge</h1>
-  
-  {#if tokenImported}
-    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4" role="alert">
-      <p class="font-bold">Success!</p>
-      <p>Authentication token imported successfully from company GPT.</p>
-    </div>
-  {/if}
   
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Left Column: Settings and Templates -->
