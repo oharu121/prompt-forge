@@ -36,6 +36,19 @@ async function handleIntrospect(request: Request) {
       const bodyText = await request.text();
       console.log('Request body:', bodyText);
       body = bodyText || '{}';
+      
+      // If the body doesn't contain a stateToken, try to parse it and add one
+      if (!body.includes('stateToken')) {
+        try {
+          const bodyObj = JSON.parse(body);
+          // If we don't have a stateToken in the request, we can't proceed
+          if (!bodyObj.stateToken) {
+            console.warn('No stateToken found in request body');
+          }
+        } catch (e) {
+          console.warn('Could not parse request body as JSON');
+        }
+      }
     } catch (e) {
       console.warn('Could not read request body, using empty object');
     }
@@ -72,7 +85,10 @@ async function handleIntrospect(request: Request) {
       return new Response(responseText, {
         status: response.status,
         headers: {
-          'Content-Type': response.headers.get('Content-Type') || 'application/json'
+          'Content-Type': response.headers.get('Content-Type') || 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept'
         }
       });
     }
@@ -85,7 +101,13 @@ async function handleIntrospect(request: Request) {
       // Handle JSON response
       const data = await response.json();
       console.log('Response data:', JSON.stringify(data));
-      return json(data);
+      return json(data, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept'
+        }
+      });
     } else {
       // Handle other response types
       const text = await response.text();
@@ -93,7 +115,10 @@ async function handleIntrospect(request: Request) {
       return new Response(text, {
         status: 200,
         headers: {
-          'Content-Type': contentType
+          'Content-Type': contentType,
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept'
         }
       });
     }
@@ -101,7 +126,12 @@ async function handleIntrospect(request: Request) {
     console.error('Error in introspection handler:', error);
     return new Response(JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept'
+      }
     });
   }
 }
