@@ -74,6 +74,27 @@ if (browser) {
     idx: {
       useGenericRemediator: true
     },
+    // Add HTTP request interceptors to handle introspection requests
+    httpRequestInterceptors: [
+      (request) => {
+        const originalUrl = request.url;
+        
+        // Check if this is an introspection request
+        if (originalUrl && originalUrl.includes('/idp/idx/introspect')) {
+          console.log('[Interceptor] Caught introspection request:', originalUrl);
+          
+          // Redirect to our proxy
+          const proxyUrl = `${window.location.origin}/api/okta-proxy/idp/idx/introspect`;
+          console.log('[Interceptor] Redirecting to:', proxyUrl);
+          
+          // Modify the request
+          request.url = proxyUrl;
+          request.method = 'POST';
+        }
+        
+        return request;
+      }
+    ],
     // Add a custom HTTP request client to route all requests through our proxy
     httpRequestClient: async (requestInfo: any) => {
       try {
