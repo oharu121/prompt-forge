@@ -59,107 +59,40 @@ if (browser) {
       storage: 'localStorage'
     },
     httpRequestClient: (async (method: string, url: string, args?: any) => {
-      try {
-        console.log(`Okta request: ${method} ${url}`);
-        
-        // Determine if this is an internal Okta request or well-known endpoint
-        const urlObj = new URL(url);
-        const isInternalRequest = urlObj.pathname.startsWith('/api/internal/');
-        const isWellKnownRequest = urlObj.pathname.includes('.well-known/');
-        
-        // Extract the path from the URL
-        let path = '';
-        
-        if (isInternalRequest) {
-          // For internal requests, use the full path
-          path = urlObj.pathname;
-        } else if (isWellKnownRequest) {
-          // For well-known requests, special handling to remove v1 segment
-          // The correct path should be /oauth2/appid/.well-known/openid-configuration (without v1)
-          const oktaBaseUrl = PUBLIC_OKTA_ISSUER.replace(/\/v1$/, '');
-          const wellKnownPath = url.replace(oktaBaseUrl, '');
-          console.log(`Corrected well-known path: ${wellKnownPath}`);
-          path = wellKnownPath;
-        } else if (url.includes('/idp/idx/introspect')) {
-          // Special handling for introspection endpoint
-          path = 'idp/idx/introspect';
-          // Force POST method for introspection
-          if (method === 'GET') {
-            console.log('Converting GET to POST for introspection endpoint');
-            method = 'POST';
-          }
-        } else {
-          // For other requests, remove the issuer URL
-          path = url.replace(PUBLIC_OKTA_ISSUER, '');
-        }
-        
-        // Construct the proxy URL
-        const proxyUrl = new URL(`/api/okta-proxy/${path.startsWith('/') ? path.substring(1) : path}`, window.location.origin);
-        
-        // Copy query parameters
-        urlObj.searchParams.forEach((value, key) => {
-          proxyUrl.searchParams.set(key, value);
-        });
-        
-        console.log(`Proxying to: ${proxyUrl.toString()}`);
-        
-        // Make the request through our proxy
-        const response = await fetch(proxyUrl.toString(), {
-          method,
-          headers: {
-            ...(args?.headers || {}),
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          body: args?.data
-        });
-        
-        // Log detailed response information for debugging
-        console.log(`Okta response for ${method} ${proxyUrl.toString()}: ${response.status} ${response.statusText}`);
-        
-        // If there's an error, log more details
-        if (!response.ok) {
-          const errorClone = response.clone();
-          try {
-            const errorData = await errorClone.json();
-            console.error('Error details:', JSON.stringify(errorData));
-          } catch (e) {
-            console.error('Could not parse error response as JSON');
-          }
-        }
-        
-        // Clone the response so we can read it multiple times if needed
-        const clonedResponse = response.clone();
-        
-        // Try to parse as JSON first
-        let responseJSON = null;
-        let responseText = '';
-        
-        try {
-          responseJSON = await response.json();
-        } catch (e) {
-          // If JSON parsing fails, get as text
-          responseText = await clonedResponse.text();
-        }
-        
-        // If we got JSON but no text, convert JSON to text
-        if (responseJSON && !responseText) {
-          responseText = JSON.stringify(responseJSON);
-        }
-        
-        return {
-          responseText,
-          status: response.status,
-          responseType: responseJSON ? 'json' : 'text',
-          responseJSON,
-          ok: response.ok,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries())
-        };
-      } catch (error) {
-        console.error('Error in Okta HTTP client:', error);
-        throw error;
-      }
+      // Determine if this is an internal Okta request
+      const urlObj = new URL(url);
+      const isInternalRequest = urlObj.pathname.startsWith('/api/internal/');
+      
+      // Construct the proxy URL
+      const proxyUrl = new URL('/api/okta-proxy' + (isInternalRequest ? urlObj.pathname : urlObj.pathname.replace(PUBLIC_OKTA_ISSUER, '')), window.location.origin);
+      
+      // Copy query parameters
+      urlObj.searchParams.forEach((value, key) => {
+        proxyUrl.searchParams.set(key, value);
+      });
+
+      // Make the request through our proxy
+      const response = await fetch(proxyUrl.toString(), {
+        method,
+        headers: {
+          ...(args?.headers || {}),
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: args?.data
+      });
+
+      const responseData = await response.json().catch(() => null);
+
+      return {
+        responseText: await response.text().catch(() => ''),
+        status: response.status,
+        responseType: 'json',
+        responseJSON: responseData,
+        ok: response.ok,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      };
     }) as HttpRequestClient
   });
 }
