@@ -195,6 +195,56 @@ if (browser) {
     responseType: ['token', 'id_token']
   });
   
+  // Monkey-patch the introspect function to use our proxy
+  if (useProxy && oktaAuth.idx) {
+    // Store the original introspect function
+    const originalIntrospect = oktaAuth.idx.introspect;
+    
+    // Override the introspect function
+    oktaAuth.idx.introspect = async function(options = {}) {
+      console.log('[Monkey Patch] Intercepted introspect call with options:', options);
+      
+      try {
+        // Make a direct request to our proxy instead
+        const proxyUrl = `${window.location.origin}/api/okta-proxy/idp/idx/introspect`;
+        console.log('[Monkey Patch] Making request to proxy:', proxyUrl);
+        
+        // Prepare the request body
+        const body = options.stateHandle ? 
+          JSON.stringify({ stateToken: options.stateHandle }) : 
+          JSON.stringify({ interactionHandle: options.interactionHandle });
+        
+        // Make the request
+        const response = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body
+        });
+        
+        if (!response.ok) {
+          console.error('[Monkey Patch] Introspection failed:', response.status);
+          throw new Error(`Introspection failed: ${response.status}`);
+        }
+        
+        // Parse the response
+        const data = await response.json();
+        console.log('[Monkey Patch] Introspection successful:', data);
+        
+        // Return the response in the format expected by the SDK
+        return data;
+      } catch (error) {
+        console.error('[Monkey Patch] Error in introspect:', error);
+        // Fall back to the original function if our proxy fails
+        return originalIntrospect.call(this, options);
+      }
+    };
+    
+    console.log('[Monkey Patch] Successfully patched introspect function');
+  }
+  
   // Add a global fetch interceptor to catch introspection requests
   if (useProxy) {
     const originalFetch = window.fetch;
