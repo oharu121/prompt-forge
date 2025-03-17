@@ -67,6 +67,85 @@ if (browser) {
     authorizeUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/authorize` : undefined,
     tokenUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/token` : undefined,
     userinfoUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/userinfo` : undefined,
+    // Add custom URLs for other endpoints
+    logoutUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/logout` : undefined,
+    revokeUrl: useProxy ? `/api/okta-proxy/oauth2/${appId}/v1/revoke` : undefined,
+    // Add a custom HTTP request client to route all requests through our proxy
+    httpRequestClient: async (requestInfo: any) => {
+      try {
+        // Get the original URL and method
+        const originalUrl = requestInfo.url as string;
+        const method = requestInfo.method as string;
+        
+        console.log(`Okta request: ${method} ${originalUrl}`);
+        
+        // Determine if this is an internal Okta request or introspection endpoint
+        let proxyUrl;
+        
+        if (originalUrl.includes('/idp/idx/')) {
+          // For Identity Engine endpoints, use our dedicated proxy
+          const path = originalUrl.split('/idp/idx/')[1];
+          proxyUrl = new URL(`/api/okta-proxy/idp/idx/${path}`, window.location.origin);
+          console.log('Using Identity Engine proxy for:', originalUrl);
+        } else if (originalUrl.includes('/api/internal/')) {
+          // For internal API endpoints, use our dedicated proxy
+          const path = originalUrl.split('/api/internal/')[1];
+          proxyUrl = new URL(`/api/internal/${path}`, window.location.origin);
+          console.log('Using internal API proxy for:', originalUrl);
+        } else if (originalUrl.includes('/.well-known/')) {
+          // For well-known endpoints, use our proxy
+          const path = originalUrl.split('/.well-known/')[1];
+          proxyUrl = new URL(`/api/okta-proxy/.well-known/${path}`, window.location.origin);
+          console.log('Using well-known proxy for:', originalUrl);
+        } else if (originalUrl.includes('/oauth2/')) {
+          // For OAuth endpoints, use our proxy
+          const path = originalUrl.split('/oauth2/')[1];
+          proxyUrl = new URL(`/api/okta-proxy/oauth2/${path}`, window.location.origin);
+          console.log('Using OAuth proxy for:', originalUrl);
+        } else {
+          // For other requests, use the general proxy
+          proxyUrl = new URL('/api/okta-proxy', window.location.origin);
+          proxyUrl.searchParams.set('url', originalUrl);
+          console.log('Using general proxy for:', originalUrl);
+        }
+        
+        console.log(`Proxying to: ${proxyUrl.toString()}`);
+        
+        // Make the request through our proxy
+        const response = await fetch(proxyUrl.toString(), {
+          method,
+          headers: {
+            ...(requestInfo.headers as Record<string, string> || {}),
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: requestInfo.args?.body as string | undefined
+        });
+        
+        // Handle the response
+        const responseText = await response.text();
+        let responseJSON = null;
+        
+        try {
+          responseJSON = JSON.parse(responseText);
+        } catch (e) {
+          // Not JSON, that's fine
+        }
+        
+        return {
+          responseText,
+          status: response.status,
+          responseType: responseJSON ? 'json' : 'text',
+          responseJSON,
+          ok: response.ok,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+        };
+      } catch (error) {
+        console.error('Error in Okta HTTP client:', error);
+        throw error;
+      }
+    },
     tokenManager: {
       storage: 'localStorage',
       storageKey: 'ota-token-storage' // Match the key used by GPT service
