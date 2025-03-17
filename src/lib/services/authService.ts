@@ -1,8 +1,27 @@
-import { OktaAuth, type UserClaims } from '@okta/okta-auth-js';
+import { OktaAuth, type UserClaims, type HttpRequestClient, type AccessToken, type IDToken, type Tokens } from '@okta/okta-auth-js';
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 // Import environment variables but don't use them for now
 import { PUBLIC_OKTA_CLIENT_ID, PUBLIC_OKTA_ISSUER, PUBLIC_OKTA_REDIRECT_URI } from '$env/static/public';
+
+// Define interfaces for Okta request handling
+interface OktaRequestInfo {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  args?: {
+    body?: string;
+  };
+}
+
+interface OktaResponse {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  data: any;
+  responseText: string;
+}
 
 // Define the auth state interface
 interface AuthState {
@@ -26,13 +45,57 @@ export const authState = writable<AuthState>({
   userInfo: null
 });
 
-// Initialize Okta Auth only in browser environment - DISABLED FOR NOW
+// Initialize Okta Auth only in browser environment
 let oktaAuth: OktaAuth | null = null;
 
-// Disable Okta initialization - we're only using bookmarklet approach
-// if (browser) {
-//   // Okta initialization code...
-// }
+if (browser) {
+  oktaAuth = new OktaAuth({
+    issuer: PUBLIC_OKTA_ISSUER,
+    clientId: PUBLIC_OKTA_CLIENT_ID,
+    redirectUri: PUBLIC_OKTA_REDIRECT_URI,
+    tokenManager: {
+      autoRenew: true,
+      autoRemove: true,
+      storage: 'localStorage'
+    },
+    httpRequestClient: (async (method: string, url: string, args?: any) => {
+      // Determine if this is an internal Okta request
+      const urlObj = new URL(url);
+      const isInternalRequest = urlObj.pathname.startsWith('/api/internal/');
+      
+      // Construct the proxy URL
+      const proxyUrl = new URL('/api/okta-proxy' + (isInternalRequest ? urlObj.pathname : urlObj.pathname.replace(PUBLIC_OKTA_ISSUER, '')), window.location.origin);
+      
+      // Copy query parameters
+      urlObj.searchParams.forEach((value, key) => {
+        proxyUrl.searchParams.set(key, value);
+      });
+
+      // Make the request through our proxy
+      const response = await fetch(proxyUrl.toString(), {
+        method,
+        headers: {
+          ...(args?.headers || {}),
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: args?.data
+      });
+
+      const responseData = await response.json().catch(() => null);
+
+      return {
+        responseText: await response.text().catch(() => ''),
+        status: response.status,
+        responseType: 'json',
+        responseJSON: responseData,
+        ok: response.ok,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      };
+    }) as HttpRequestClient
+  });
+}
 
 // Helper function to extract token values safely
 function getTokenValue(token: any): string | null {
@@ -78,8 +141,7 @@ function parseJwt(token: string): any {
 
 // Initialize auth state
 export async function initAuth() {
-  // Skip if not in browser
-  if (!browser) {
+  if (!browser || !oktaAuth) {
     authState.set({
       isAuthenticated: false,
       isLoading: false,
@@ -93,41 +155,48 @@ export async function initAuth() {
   }
 
   try {
-    // Check if we have tokens directly in localStorage (from bookmarklet)
-    if (window.localStorage) {
-      try {
-        const tokenStorage = localStorage.getItem('prompt-forge-token-storage');
-        if (tokenStorage) {
-          const parsedStorage = JSON.parse(tokenStorage);
-          const accessTokenValue = parsedStorage?.accessToken?.value;
-          const idTokenValue = parsedStorage?.idToken?.value;
-          
-          if (accessTokenValue) {
-            // Parse the JWT to get user info
-            const userInfo = idTokenValue 
-              ? parseJwt(idTokenValue) 
-              : parseJwt(accessTokenValue);
-            
-            // Set the auth state with the imported tokens
-            authState.set({
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              user: userInfo,
-              accessToken: accessTokenValue,
-              idToken: idTokenValue,
-              userInfo
-            });
-            
-            console.log('Using imported tokens for authentication');
-            return;
-          }
-        }
-      } catch (e) {
-        console.error('Error checking localStorage for tokens:', e);
-      }
-    }
+    // Check for existing tokens
+    const accessToken = await oktaAuth.tokenManager.get('accessToken') as AccessToken;
+    const idToken = await oktaAuth.tokenManager.get('idToken') as IDToken;
     
+    if (accessToken && idToken) {
+      const userInfo = await oktaAuth.token.getUserInfo();
+      
+      authState.set({
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        user: userInfo,
+        accessToken: accessToken.accessToken,
+        idToken: idToken.idToken,
+        userInfo
+      });
+      return;
+    }
+
+    // Check for tokens in URL
+    const { tokens } = await oktaAuth.token.parseFromUrl();
+    
+    if (tokens) {
+      // Store tokens
+      const { accessToken, idToken } = tokens as Tokens;
+      if (accessToken) await oktaAuth.tokenManager.add('accessToken', accessToken);
+      if (idToken) await oktaAuth.tokenManager.add('idToken', idToken);
+      
+      const userInfo = await oktaAuth.token.getUserInfo();
+      
+      authState.set({
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        user: userInfo,
+        accessToken: accessToken?.accessToken || null,
+        idToken: idToken?.idToken || null,
+        userInfo
+      });
+      return;
+    }
+
     // No authentication found
     authState.set({
       isAuthenticated: false,
@@ -140,7 +209,48 @@ export async function initAuth() {
     });
   } catch (error) {
     console.error('Error initializing auth:', error);
-    // Don't show the error to the user, just log it and set unauthenticated state
+    authState.set({
+      isAuthenticated: false,
+      isLoading: false,
+      error: error instanceof Error ? error : new Error(String(error)),
+      user: null,
+      accessToken: null,
+      idToken: null,
+      userInfo: null
+    });
+  }
+}
+
+// Token refresh
+export async function refreshToken() {
+  if (!browser || !oktaAuth) {
+    return null;
+  }
+
+  try {
+    const { tokens } = await oktaAuth.token.getWithoutPrompt();
+    return tokens.accessToken?.accessToken || null;
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return null;
+  }
+}
+
+// Login function
+export function login() {
+  if (browser && oktaAuth) {
+    oktaAuth.signInWithRedirect();
+  }
+}
+
+// Logout function
+export async function logout() {
+  if (!browser || !oktaAuth) {
+    return;
+  }
+
+  try {
+    await oktaAuth.signOut();
     authState.set({
       isAuthenticated: false,
       isLoading: false,
@@ -150,81 +260,20 @@ export async function initAuth() {
       idToken: null,
       userInfo: null
     });
+  } catch (error) {
+    console.error('Error during logout:', error);
   }
-}
-
-// Token refresh logic - DISABLED FOR NOW
-export async function refreshToken() {
-  // Since we're not using Okta, just return null
-  console.log('Token refresh is disabled when using bookmarklet authentication');
-  return null;
-}
-
-// Login function - DISABLED FOR NOW
-export function login() {
-  console.log('Direct login is disabled. Please use the bookmarklet to authenticate.');
-}
-
-// Logout function
-export function logout() {
-  if (!browser) {
-    return;
-  }
-
-  // Clear tokens from localStorage
-  try {
-    localStorage.removeItem('prompt-forge-token-storage');
-  } catch (e) {
-    console.error('Error removing tokens from localStorage:', e);
-  }
-  
-  // Update auth state
-  authState.set({
-    isAuthenticated: false,
-    isLoading: false,
-    error: null,
-    user: null,
-    accessToken: null,
-    idToken: null,
-    userInfo: null
-  });
 }
 
 // Get access token
 export async function getAccessToken() {
-  if (!browser) {
+  if (!browser || !oktaAuth) {
     return null;
   }
 
   try {
-    // First check if we have a token in the auth state
-    let currentToken = null;
-    authState.subscribe(state => {
-      currentToken = state.accessToken;
-    })();
-    
-    if (currentToken) {
-      return currentToken;
-    }
-    
-    // If no token in auth state, check localStorage directly
-    if (window.localStorage) {
-      try {
-        const tokenStorage = localStorage.getItem('prompt-forge-token-storage');
-        if (tokenStorage) {
-          const parsedStorage = JSON.parse(tokenStorage);
-          const accessTokenValue = parsedStorage?.accessToken?.value;
-          
-          if (accessTokenValue) {
-            return accessTokenValue;
-          }
-        }
-      } catch (e) {
-        console.error('Error checking localStorage for tokens:', e);
-      }
-    }
-    
-    return null;
+    const token = await oktaAuth.tokenManager.get('accessToken') as AccessToken;
+    return token?.accessToken || null;
   } catch (error) {
     console.error('Error getting access token:', error);
     return null;
