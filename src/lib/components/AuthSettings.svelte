@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { authState, logout, initAuth, login } from '$lib/services/authService';
+  import { authState, logout, initAuth } from '$lib/services/authService';
   import * as Card from "$lib/components/ui/card";
   import { goto } from '$app/navigation';
   
@@ -79,56 +79,44 @@
           Sign Out
         </button>
       {:else}
+        <div class="p-4 bg-yellow-50 rounded">
+          <div class="flex items-start">
+            <div class="flex-shrink-0 mt-0.5">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-yellow-600">
+                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-yellow-700">You are not authenticated. Please use the bookmarklet to import your authentication from Company GPT.</p>
+            </div>
+          </div>
+        </div>
+        
+        <button
+          on:click={navigateToBookmarklet}
+          class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors mt-4"
+        >
+          Get Authentication Bookmarklet
+        </button>
+        <p class="text-sm text-gray-600 text-center mt-2">
+          Already logged into Company GPT? Use our bookmarklet to quickly import your authentication.
+        </p>
+        
         {#if $authState.error}
-          <div class="p-4 bg-red-50 rounded">
+          <div class="p-4 bg-red-50 rounded mt-4">
             <div class="flex items-start">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+              <div class="flex-shrink-0 mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-red-600">
+                  <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
                 </svg>
               </div>
               <div class="ml-3">
-                <h3 class="text-sm font-medium text-red-800">Authentication Error</h3>
-                <div class="mt-2 text-sm text-red-700">
-                  <p>{$authState.error.message}</p>
-                </div>
+                <p class="text-red-700 font-bold">Error</p>
+                <p class="text-red-600">{($authState.error as Error)?.message || 'Unknown error'}</p>
               </div>
             </div>
           </div>
         {/if}
-
-        <div class="space-y-4">
-          <div class="p-4 bg-gray-50 rounded">
-            <h3 class="font-medium mb-2">Option 1: Sign in with Okta</h3>
-            <p class="text-sm text-gray-600 mb-3">Use your company Okta credentials to sign in directly.</p>
-            <button
-              on:click={login}
-              class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors"
-            >
-              Sign in with Okta
-            </button>
-          </div>
-
-          <div class="relative py-3">
-            <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-gray-300"></div>
-            </div>
-            <div class="relative flex justify-center">
-              <span class="px-2 bg-white text-sm text-gray-500">OR</span>
-            </div>
-          </div>
-
-          <div class="p-4 bg-gray-50 rounded">
-            <h3 class="font-medium mb-2">Option 2: Use Bookmarklet</h3>
-            <p class="text-sm text-gray-600 mb-3">Already logged into Company GPT? Import your authentication using the bookmarklet.</p>
-            <button
-              on:click={navigateToBookmarklet}
-              class="w-full border border-blue-600 text-blue-600 py-2 px-4 rounded hover:bg-blue-50 transition-colors"
-            >
-              Get Authentication Bookmarklet
-            </button>
-          </div>
-        </div>
       {/if}
     </div>
   </Card.Content>
