@@ -10,6 +10,8 @@ const OKTA_BASE_URL = issuerUrlParts ? issuerUrlParts[1] : PUBLIC_OKTA_ISSUER.re
 async function handleIntrospect(request: Request) {
   try {
     console.log('Handling introspection request');
+    console.log('Request method:', request.method);
+    console.log('Request headers:', Object.fromEntries(request.headers.entries()));
     
     // Build the target URL
     const targetUrl = new URL('/idp/idx/introspect', OKTA_BASE_URL);
@@ -31,12 +33,15 @@ async function handleIntrospect(request: Request) {
     // Get the request body or create an empty one
     let body = '{}';
     try {
-      body = await request.text() || '{}';
+      const bodyText = await request.text();
+      console.log('Request body:', bodyText);
+      body = bodyText || '{}';
     } catch (e) {
       console.warn('Could not read request body, using empty object');
     }
     
     console.log('Proxying introspection request to:', targetUrl.toString());
+    console.log('With headers:', headers);
     
     // Forward the request to Okta, always using POST
     const response = await fetch(targetUrl.toString(), {
@@ -45,11 +50,14 @@ async function handleIntrospect(request: Request) {
       body
     });
     
+    console.log('Introspection response status:', response.status, response.statusText);
+    
     if (!response.ok) {
       console.error('Introspection error:', response.status, response.statusText);
       
       // Get the response text
       const responseText = await response.text();
+      console.error('Error response:', responseText);
       
       // Try to parse as JSON for better error logging
       try {
@@ -57,7 +65,7 @@ async function handleIntrospect(request: Request) {
         console.error('Error details:', JSON.stringify(errorData));
       } catch (e) {
         // Not JSON, log as text
-        console.error('Response content:', responseText);
+        console.error('Response is not JSON');
       }
       
       // Return the response as-is, preserving status code and headers
@@ -71,14 +79,17 @@ async function handleIntrospect(request: Request) {
     
     // Handle the response
     const contentType = response.headers.get('Content-Type') || '';
+    console.log('Response content type:', contentType);
     
     if (contentType.includes('application/json')) {
       // Handle JSON response
       const data = await response.json();
+      console.log('Response data:', JSON.stringify(data));
       return json(data);
     } else {
       // Handle other response types
       const text = await response.text();
+      console.log('Response text:', text.substring(0, 200) + '...');
       return new Response(text, {
         status: 200,
         headers: {
@@ -97,11 +108,13 @@ async function handleIntrospect(request: Request) {
 
 // Handle GET requests (convert to POST)
 export const GET: RequestHandler = async ({ request }) => {
+  console.log('GET request to introspection endpoint');
   return handleIntrospect(request);
 };
 
 // Handle POST requests
 export const POST: RequestHandler = async ({ request }) => {
+  console.log('POST request to introspection endpoint');
   return handleIntrospect(request);
 };
 
@@ -118,13 +131,16 @@ export const PATCH: RequestHandler = async ({ request }) => {
   return handleIntrospect(request);
 };
 
+// Handle OPTIONS requests (for CORS preflight)
 export const OPTIONS: RequestHandler = async ({ request }) => {
+  console.log('OPTIONS request to introspection endpoint');
   // For OPTIONS, return CORS headers
   return new Response(null, {
     status: 204,
     headers: {
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept',
       'Access-Control-Max-Age': '86400'
     }
   });

@@ -73,76 +73,92 @@ if (browser) {
     // Add a custom HTTP request client to route all requests through our proxy
     httpRequestClient: async (requestInfo: any) => {
       try {
-        // Get the original URL and method
         const originalUrl = requestInfo.url as string;
-        const method = requestInfo.method as string;
+        let method = requestInfo.method as string;
         
-        console.log(`Okta request: ${method} ${originalUrl}`);
+        console.log(`[httpRequestClient] Original request: ${method} ${originalUrl}`);
+        console.log(`[httpRequestClient] Headers:`, requestInfo.headers);
+        console.log(`[httpRequestClient] Args:`, requestInfo.args);
         
-        // Determine if this is an internal Okta request or introspection endpoint
-        let proxyUrl;
+        let proxyUrl = '';
         
-        if (originalUrl.includes('/idp/idx/')) {
-          // For Identity Engine endpoints, use our dedicated proxy
-          const path = originalUrl.split('/idp/idx/')[1];
-          proxyUrl = new URL(`/api/okta-proxy/idp/idx/${path}`, window.location.origin);
-          console.log('Using Identity Engine proxy for:', originalUrl);
-        } else if (originalUrl.includes('/api/internal/')) {
-          // For internal API endpoints, use our dedicated proxy
-          const path = originalUrl.split('/api/internal/')[1];
-          proxyUrl = new URL(`/api/internal/${path}`, window.location.origin);
-          console.log('Using internal API proxy for:', originalUrl);
-        } else if (originalUrl.includes('/.well-known/')) {
-          // For well-known endpoints, use our proxy
-          const path = originalUrl.split('/.well-known/')[1];
-          proxyUrl = new URL(`/api/okta-proxy/.well-known/${path}`, window.location.origin);
-          console.log('Using well-known proxy for:', originalUrl);
-        } else if (originalUrl.includes('/oauth2/')) {
-          // For OAuth endpoints, use our proxy
-          const path = originalUrl.split('/oauth2/')[1];
-          proxyUrl = new URL(`/api/okta-proxy/oauth2/${path}`, window.location.origin);
-          console.log('Using OAuth proxy for:', originalUrl);
-        } else {
-          // For other requests, use the general proxy
-          proxyUrl = new URL('/api/okta-proxy', window.location.origin);
-          proxyUrl.searchParams.set('url', originalUrl);
-          console.log('Using general proxy for:', originalUrl);
+        // Special handling for introspection endpoint
+        if (originalUrl.includes('/idp/idx/introspect')) {
+          console.log('[httpRequestClient] Detected introspection request');
+          proxyUrl = '/api/okta-proxy/idp/idx/introspect';
+          // Force POST method for introspection
+          if (method !== 'POST') {
+            console.log(`[httpRequestClient] Changing method from ${method} to POST for introspection`);
+            method = 'POST';
+          }
+        }
+        // Special handling for theme stylesheet
+        else if (originalUrl.includes('/api/internal/brand/theme/style-sheet')) {
+          console.log('[httpRequestClient] Detected theme stylesheet request');
+          proxyUrl = '/api/okta-proxy/api/internal/brand/theme/style-sheet';
+        }
+        // Special handling for .well-known endpoints
+        else if (originalUrl.includes('/.well-known/')) {
+          console.log('[httpRequestClient] Detected .well-known request');
+          const wellKnownPath = originalUrl.split('/.well-known/')[1];
+          proxyUrl = `/api/okta-proxy/.well-known/${wellKnownPath}`;
+        }
+        // Handle other Identity Engine endpoints
+        else if (originalUrl.includes('/idp/idx/')) {
+          console.log('[httpRequestClient] Detected Identity Engine request');
+          const idxPath = originalUrl.split('/idp/idx/')[1];
+          proxyUrl = `/api/okta-proxy/idp/idx/${idxPath}`;
+        }
+        // Handle other endpoints
+        else {
+          console.log('[httpRequestClient] Using default proxy handling');
+          // Extract path from the original URL
+          const urlObj = new URL(originalUrl);
+          const path = urlObj.pathname;
+          proxyUrl = `/api/okta-proxy${path}`;
         }
         
-        console.log(`Proxying to: ${proxyUrl.toString()}`);
+        console.log(`[httpRequestClient] Proxying to: ${proxyUrl}`);
+        
+        // Prepare headers
+        const headers = { ...requestInfo.headers } as Record<string, string>;
         
         // Make the request through our proxy
-        const response = await fetch(proxyUrl.toString(), {
+        const response = await fetch(proxyUrl, {
           method,
-          headers: {
-            ...(requestInfo.headers as Record<string, string> || {}),
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          body: requestInfo.args?.body as string | undefined
+          headers,
+          body: requestInfo.args?.body
         });
         
-        // Handle the response
-        const responseText = await response.text();
-        let responseJSON = null;
+        console.log(`[httpRequestClient] Response status: ${response.status}`);
         
-        try {
-          responseJSON = JSON.parse(responseText);
-        } catch (e) {
-          // Not JSON, that's fine
+        if (!response.ok) {
+          console.error(`[httpRequestClient] Error response: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.error(`[httpRequestClient] Error details: ${errorText}`);
+          throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+        }
+        
+        // Process the response
+        const contentType = response.headers.get('Content-Type') || '';
+        let responseData;
+        
+        if (contentType.includes('application/json')) {
+          responseData = await response.json();
+          console.log('[httpRequestClient] JSON response:', responseData);
+        } else {
+          responseData = await response.text();
+          console.log('[httpRequestClient] Text response length:', responseData.length);
         }
         
         return {
-          responseText,
           status: response.status,
-          responseType: responseJSON ? 'json' : 'text',
-          responseJSON,
-          ok: response.ok,
-          statusText: response.statusText,
+          responseText: typeof responseData === 'string' ? responseData : JSON.stringify(responseData),
+          responseType: contentType.includes('application/json') ? 'json' : 'text',
           headers: Object.fromEntries(response.headers.entries())
         };
       } catch (error) {
-        console.error('Error in Okta HTTP client:', error);
+        console.error('[httpRequestClient] Request error:', error);
         throw error;
       }
     },
