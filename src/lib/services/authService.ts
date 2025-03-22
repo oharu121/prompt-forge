@@ -1,4 +1,4 @@
-import { OktaAuth, type UserClaims } from '@okta/okta-auth-js';
+import { OktaAuth, type UserClaims } from '$lib/okta-auth';
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import { PUBLIC_OKTA_CLIENT_ID, PUBLIC_OKTA_ISSUER, PUBLIC_OKTA_REDIRECT_URI } from '$env/static/public';
